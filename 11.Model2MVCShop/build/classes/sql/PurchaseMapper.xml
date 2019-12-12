@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="PurchaseMapper">
+ 	
+ 	
+	<resultMap type="purchase" id="purchaseSelectMap">
+		<result property="tranNo" 				column="TRAN_NO" 		jdbcType="INTEGER"/>
+  		<result property="purchaseProd.prodNo" 	column="PROD_NO" 		jdbcType="INTEGER"/>
+  		<result property="buyer.userId" 		column="BUYER_ID"		jdbcType="VARCHAR"/>
+  		<result property="paymentOption"		column="PAYMENT_OPTION" jdbcType="CHAR"/><!--  -->
+  		<result property="receiverName" 		column="RECEIVER_NAME" 	jdbcType="VARCHAR"/>
+  		<result property="receiverPhone" 		column="RECEIVER_PHONE" jdbcType="VARCHAR"/>
+  		<result property="divyAddr" 			column="DEMAILADDR" 		jdbcType="VARCHAR"/>
+  		<result property="divyRequest" 			column="DLVY_REQUEST" 	jdbcType="VARCHAR"/>
+  		<result property="tranCode" 			column="TRAN_STATUS_CODE" 	jdbcType="CHAR"/><!--  -->
+  		<result property="orderDate" 			column="ORDER_DATE" 		jdbcType="DATE"/>  		 
+  		<result property="divyDate" 			column="DLVY_DATE"		jdbcType="DATE"/>
+  	</resultMap>
+	
+	<insert id="addPurchase" parameterType="purchase">
+		INSERT
+		INTO transaction(	tran_no, prod_no, buyer_id, payment_option, receiver_name,
+						receiver_phone, demailaddr, dlvy_request,
+						tran_status_code, order_date, dlvy_date)
+						
+		VALUES(SEQ_TRANSACTION_TRAN_NO.NEXTVAL, #{purchaseProd.prodNo, jdbcType=INTEGER},
+					#{buyer.userId,jdbcType=VARCHAR} ,#{paymentOption,jdbcType=CHAR}, 
+					#{receiverName,jdbcType=VARCHAR}, #{receiverPhone,jdbcType=VARCHAR}, #{divyAddr,jdbcType=VARCHAR},
+					#{divyRequest,jdbcType=VARCHAR}, 1, sysdate, #{divyDate,jdbcType=DATE})
+	</insert>
+	
+	
+	<select id="getPurchase" parameterType="int" resultMap="purchaseSelectMap">
+		SELECT
+		TRAN_NO, PROD_NO, PAYMENT_OPTION, RECEIVER_NAME, RECEIVER_PHONE, DEMAILADDR, DLVY_REQUEST, DLVY_DATE, ORDER_DATE, TRAN_STATUS_CODE
+		FROM transaction
+		WHERE tran_no = #{value}
+	</select>
+	
+	<select id="getPurchaseList" parameterType="map" resultMap="purchaseSelectMap">
+  		SELECT *
+  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+  						FROM ( SELECT t.tran_no, p.prod_no, t.order_date, t.tran_status_code , t.buyer_id,
+  										t.receiver_name, t.receiver_phone
+										FROM transaction t, product p, users u 
+										WHERE t.prod_no = p.prod_no 
+										AND t.buyer_id = u.user_id 
+										AND u.user_id = #{buyerId:VARCHAR}
+										ORDER BY tran_no  ) inner_table
+  						WHERE ROWNUM <![CDATA[<=]]> #{search.currentPage}*#{search.pageSize} )
+  		WHERE row_seq BETWEEN (#{search.currentPage}-1)*#{search.pageSize}+1
+  		AND #{search.currentPage}*#{search.pageSize}
+	</select>
+	<!-- CDATA는 부등호 처리를 위한 방법으로 CDATA안에 입력된 것은 무조건 문자열로 입력된다. -->
+	
+	
+	
+	<select id="getSaleList" parameterType="search" resultMap="purchaseSelectMap">
+		SELECT *
+  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+  						FROM ( SELECT t.tran_no, p.prod_no, t.order_date, t.tran_status_code , t.buyer_id, t.receiver_name, t.receiver_phone
+										FROM transaction t, product p, users u 
+										WHERE t.prod_no = p.prod_no
+										AND t.buyer_id = u.user_id
+										ORDER BY tran_no  ) inner_table
+  						WHERE ROWNUM <![CDATA[<=]]> #{currentPage}*#{pageSize} )
+  		WHERE row_seq BETWEEN (#{currentPage}-1)*#{pageSize}+1
+  		AND #{currentPage}*#{pageSize}
+	</select>
+	
+	<select  id="getTotalCount"  parameterType="purchase"	 resultType="int">
+	  	SELECT COUNT(*)
+	  	FROM transaction
+	  	<if test="buyer!=null">
+		  	where buyer_id = #{buyer.userId:VARCHAR}
+	  	</if> 
+	</select>
+	
+	<update id="updatePurchase" parameterType="purchase">
+		UPDATE transaction
+		<set>
+			PAYMENT_OPTION=#{paymentOption},RECEIVER_NAME=#{receiverName},
+			RECEIVER_PHONE=#{receiverPhone},DEMAILADDR=#{divyAddr},
+			DLVY_REQUEST=#{divyRequest},DLVY_DATE=#{divyDate}
+			WHERE TRAN_NO=#{tranNo}
+		</set>
+	</update>
+	
+	<update id="updateTranCode" parameterType="purchase">
+		UPDATE transaction
+		<set>
+			TRAN_STATUS_CODE=#{tranCode} 
+			WHERE TRAN_NO=#{tranNo}
+		</set>
+	</update>
+	
+</mapper>
